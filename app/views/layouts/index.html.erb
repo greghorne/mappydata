@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>MappyData/title>
+  <%= stylesheet_link_tag    'application', media: 'all', 'data-turbolinks-track' => true %>
+  <%= javascript_include_tag 'application', 'data-turbolinks-track' => true %>
+  <%= csrf_meta_tags %>
+</head>
+
+<body>
+	<div id="map"></div>
+
+	<script type="text/javascript">
+
+	////////////////////////////////////////////
+	// init osm map layer
+	Maps.init();
+
+	// <%= yield %>
+
+</body>
+</html>

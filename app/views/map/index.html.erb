@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>MappyData</title>
+	<%= stylesheet_link_tag    'application', media: 'all', 'data-turbolinks-track' => true %>
+	<%= javascript_include_tag 'application', 'data-turbolinks-track' => true %>
+	<%= csrf_meta_tags %>
+
+	<style type="text/css">
+	
+	 	html, body {
+			height: 100%;
+			width: 100%;
+		}
+
+		#map { 
+			height: 100%; 
+		}
+
+
+
+		#geolocateUI, #clearMapUI {
+			background-color: #fff;
+			border: 2px solid #fff;
+			border-radius: 3px;
+			box-shadow: 0 2px 6px rgba(0,0,0,.3);
+			cursor: pointer;
+			float: left;
+			margin-bottom: 22px;
+			text-align: center;
+		}
+
+		#geolocateText, #clearMapText {
+			color: rgb(25,25,25);
+			font-family: Roboto,Arial,sans-serif;
+			font-size: 15px;
+			line-height: 25px;
+			padding-left: 5px;
+			padding-right: 5px;
+		}
+
+		#clearMapUI {
+			margin-left: 12px;
+		}
+
+		.controls {
+			margin-top: 10px;
+			border: 1px solid transparent;
+			border-radius: 2px 0 0 2px;
+			box-sizing: border-box;
+			-moz-box-sizing: border-box;
+			height: 32px;
+			outline: none;
+			box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+		}
+
+		#pac-input {
+			background-color: #fff;
+			font-family: Roboto;
+			font-size: 15px;
+			font-weight: 300;
+			margin-left: 12px;
+			padding: 0 11px 0 13px;
+			text-overflow: ellipsis;
+			width: 300px;
+		}
+
+		#pac-input: focus {
+			border-color: #4d90fe;
+		}
+
+		.pac-container {
+			font-family: Roboto;
+		}
+
+		#type-selector {
+			color: #ffff;
+			background-color: : #4d90fe;
+			padding: 5px 11px 0px 11px;
+		}
+
+		#type-selector label {
+			font-family: Roboto;
+			font-size: 13px;
+			font-weight: 300;
+		}
+
+	</style>
+</head>
+
+<body>
+	<input id='pac-input' class='controls' type='text' placeholder='Search Box'>
+	<div id='map'></div>
+
+	<script type="text/javascript">
+
+
+	/////////////////////////////////////////
+
+	// default location and zooms
+	var latitude = 35.746512259918504;
+	var longitude = -96.9873046875;
+	var zoom = 4;
+	var zoomGeoLocation = 17;
+
+	var map;
+	var drawingmanager;
+	var infowindow;
+
+	function initMap() {
+
+  		// Create a map object and specify the DOM element for display.
+  		map = new google.maps.Map(document.getElementById('map'), {
+    		center: {lat: latitude, lng: longitude},
+    		scrollwheel: true,
+    		zoom: zoom,
+    		scaleControl: true,
+    		streetViewControl: false,
+
+  			mapTypeControl: true,
+  			mapTypeControlOptions: {
+  				style: google.maps.MapTypeControlStyle.HORIZONTAL_BAR,
+  				mapTypeIds: [
+  					google.maps.MapTypeId.ROADMAP,
+  					google.maps.MapTypeId.TERRAIN,
+  					google.maps.MapTypeId.SATELLITE,
+  					google.maps.MapTypeId.HYBRID
+  				]
+  			}
+  		});
+  		initDrawingManager();
+  		initSearchBoxControl();
+
+  		// Set up of custom button controls
+		var customControlsDiv = document.createElement('div');
+		var customControls = new initCustomControls(customControlsDiv, map);
+		console.log("abc")
+		customControlsDiv.index = 1;
+		customControlsDiv.style['padding-top'] = '10px';
+		map.controls[google.maps.ControlPosition.TOP_CENTER].push(customControlsDiv);
+		
+  	};
+
+  	function initDrawingManager() {
+  		// drawing manager set up (drawing tools)
+  		drawingManager = new google.maps.drawing.DrawingManager({
+  			drawingMode: google.maps.drawing.OverlayType.DEFAULT,
+  			drawingControl: true,
+  			drawingControlOptions: {
+  				position: google.maps.ControlPosition.RIGHT_TOP,
+  				drawingModes: [
+  					google.maps.drawing.OverlayType.POLYGON,
+  					google.maps.drawing.OverlayType.CIRCLE,
+  					google.maps.drawing.OverlayType.RECTANGLE
+  				]
+  			}
+  		});
+  		drawingManager.setMap(map);
+
+  		// event - draw polygon
+  		google.maps.event.addListener(drawingManager, 'polygoncomplete', function(polygon) {
+  			console.log("polygoncomplete")
+  			var verticies = polygon.getPath();
+  			for (var n = 0; n < verticies.getLength(); n++) {
+  				xy = verticies.getAt(n);
+  				console.log(xy.lat() + ", " + xy.lng());
+  			}
+  			console.log("----------")
+  			drawingManager.setDrawingMode(null)
+  		})
+
+  		// event - draw circle
+  		google.maps.event.addListener(drawingManager, 'circlecomplete', function(circle) {
+  			console.log("circlecomplete");
+  			console.log(circle.getCenter().lat() + ", " + circle.getCenter().lng());
+  			console.log(circle.getRadius() + " metres");
+  			console.log("----------")
+  			drawingManager.setDrawingMode(null)
+  		})
+
+  		// event - draw rectangle
+  		google.maps.event.addListener(drawingManager, 'rectanglecomplete', function(rectangle) {
+  			console.log("rectanglecomplete")
+  			console.log("NE: " + rectangle.getBounds().getNorthEast().lat() + ", " + rectangle.getBounds().getNorthEast().lng());
+			console.log("SW: " + rectangle.getBounds().getSouthWest().lat() + ", " + rectangle.getBounds().getSouthWest().lng());
+			console.log("----------")
+			drawingManager.setDrawingMode(null)
+  		})
+
+  		// event - draw overlay complete
+		google.maps.event.addListener(drawingManager, 'ovelaycomplete', function(event) {
+			console.log(event.type);
+			console.log("overlaycomplete");
+		});
+	};
+
+	function initSearchBoxControl() {
+
+		//////////////////////////////
+		// Search Box
+		var input = document.getElementById('pac-input');
+		var searchBox = new google.maps.places.SearchBox(input);
+		map.controls[google.maps.ControlPosition.TOP_LEFT].push(input);
+
+		map.addListener('bounds_changed', function() {
+			searchBox.setBounds(map.getBounds());
+		});
+
+		var markers = [];
+		// [START region_getplaces]
+		// Listen for the event fired when the user selects a prediction and retrieve
+		// more details for that place.
+		searchBox.addListener('places_changed', function() {
+			var places = searchBox.getPlaces();
+
+			if (places.length == 0) {
+			  return;
+			}
+
+			// Clear out the old markers.
+			markers.forEach(function(marker) { 
+			  marker.setMap(null);
+			});
+			markers = [];
+
+			// For each place, get the icon, name and location.
+			var bounds = new google.maps.LatLngBounds();
+			places.forEach(function(place) {
+				var icon = {
+					url: place.icon,
+					size: new google.maps.Size(71, 71),
+					origin: new google.maps.Point(0, 0),
+					anchor: new google.maps.Point(17, 34),
+					scaledSize: new google.maps.Size(25, 25)
+				};
+
+				// Create a marker for each place.
+				markers.push(new google.maps.Marker({
+					map: map,
+					icon: icon,
+					title: place.name,
+					position: place.geometry.location
+				}));
+			
+				if (place.geometry.viewport) {
+					// Only geocodes have viewport.
+					bounds.union(place.geometry.viewport);
+				} else {
+					bounds.extend(place.geometry.location);
+				}
+			});
+			map.fitBounds(bounds);		
+		});
+		
+	};
+
+
+
+
+	//////////////////////////////
+	// Custom button controls set up
+	//////////////////////////////
+	function initCustomControls(controlDiv, map) {
+
+		// We set up a variable for this since we're adding event listeners later.
+		var control = this;
+
+		// Set CSS for the control border
+		var geolocateUI = document.createElement('div');
+		geolocateUI.id = 'geolocateUI';
+		geolocateUI.title = 'Click to geolocate on map';
+		controlDiv.appendChild(geolocateUI);
+
+		// Set CSS for the control interior
+		var geolocateText = document.createElement('div');
+		geolocateText.id = 'geolocateText';
+		geolocateText.innerHTML = 'Geolocate';
+		geolocateUI.appendChild(geolocateText);
+
+		// Click event for Geolocate
+		geolocateUI.addEventListener('click', function() {
+			var options = { timeout: 5000, enableHighAccuracy: true }
+			navigator.geolocation.getCurrentPosition(success, error, options)
+		});
+		//////////////////////////////
+
+
+		//////////////////////////////
+		// Clear Map
+		//////////////////////////////
+		var clearMapUI = document.createElement('div');
+		clearMapUI.id = 'clearMapUI';
+		clearMapUI.title = 'Click to clear map';
+		controlDiv.appendChild(clearMapUI);
+
+		// Set CSS for the control interior
+		var clearMapText = document.createElement('div');
+		clearMapText.id = 'clearMapText';
+		clearMapText.innerHTML = 'Clear Map';
+		clearMapUI.appendChild(clearMapText);
+
+		// Set up the click event listener for 'Set Center': Set the center of the
+		// control to the current center of the map.
+		clearMapUI.addEventListener('click', function() {
+			if (infowindow) {
+				infowindow.close();
+			}
+		});
+		//////////////////////////////
+
+	};
+	//////////////////////////////
+
+
+	//////////////////////////////	
+	// Geolocation 'success' function
+	//////////////////////////////
+	function success(location) {
+
+		if (infowindow) {
+			infowindow.close();
+		}
+
+		latitude = location.coords.latitude;
+		longitude = location.coords.longitude;
+
+		var position = {
+			lat: latitude,
+			lng: longitude
+		};
+		map.setCenter(position)
+		map.setZoom(zoomGeoLocation)
+
+		infowindow = new google.maps.InfoWindow({map: map});
+		infowindow.setPosition(position)
+		infowindow.setContent('<center>Your approximate location<br>(More or less ' + location.coords.accuracy.toString() + '  metres)</center>')
+
+		// setTimeout(function() { infowindow.close(); }, 10000 );
+	};
+	//////////////////////////////
+
+
+	//////////////////////////////
+	// Geolocation 'error' function
+	//////////////////////////////
+	function error(error) {
+		console.log("Error: getCurrentPosition: " + error)
+	}
+	//////////////////////////////
+
+
+	function clearMap(controlDiv, map) {
+
+	}
+
+	</script>
+
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAiI4PW3tjubRo0375oqXCV_ma9r68LvHs&callback=initMap&libraries=drawing,places" async defer>
+    </script>
+
+ <!--   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAiI4PW3tjubRo0375oqXCV_ma9r68LvHs&callback=initMap&libraries=drawing"
+        async defer>
+    </script> -->
+</body>
+</html>
