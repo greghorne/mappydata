@@ -15,13 +15,13 @@
 # gem 'pg'
 #
 default: &default
-  adapter: postgresql
+  adapter:  postgresql
   encoding: unicode
-  host: kamiuma.remotewebaccess.com
-  dbname: census 
-  port: 5432
-  user: postgres
-  password: postgres
+  host:     <%= ENV['MAPPY_DATA_DB_HOST'] %>
+  dbname:   <%= ENV['MAPPY_DATA_DB'] %>
+  port:     <%= ENV['MAPPY_DATA_DB_PORT'] %>
+  user:     <%= ENV['MAPPY_DATA_USER'] %>
+  password: <%= ENV['MAPPY_DATA_PASSWORD'] %>
   # For details on connection pooling, see rails configuration guide
   # http://guides.rubyonrails.org/configuring.html#database-pooling
   pool: 5
