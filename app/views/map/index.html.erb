@@ -140,6 +140,26 @@
 	var drawingmanager;
 	var infowindow;
 
+	var _myShape;
+	var _myMarkers = [];
+
+	function calculate_demographics(shape_type) {
+		console.log("calculate_demographics " + shape_type)
+		$.ajax({
+		    url: "/calculate_demographics.json",
+		    type: "POST",
+		    data: {msg: "this is a message..._myShape"}
+		}).done(function (data) {
+			console.log("");
+			console.log("looped back...");
+			population = data["pop"]
+			household = data["hu"]
+			console.log(population + " , " + household)
+		 //    alertify.success("<center>Population: " + population + " </br> Households: " + household + "</center>")
+		});
+		console.log("out...")
+	}
+
 	function initMap() {
 
   		// Create a map object and specify the DOM element for display.
@@ -162,9 +182,9 @@
   			},
 
 	        // This is where you would paste any style found on Snazzy Maps.
-	        // styles: [{"featureType":"administrative","elementType":"all","stylers":[{"visibility":"on"},{"lightness":33}]},{"featureType":"landscape","elementType":"all","stylers":[{"color":"#f2e5d4"}]},{"featureType":"poi.park","elementType":"geometry","stylers":[{"color":"#c5dac6"}]},{"featureType":"poi.park","elementType":"labels","stylers":[{"visibility":"on"},{"lightness":20}]},{"featureType":"road","elementType":"all","stylers":[{"lightness":20}]},{"featureType":"road.highway","elementType":"geometry","stylers":[{"color":"#c5c6c6"}]},{"featureType":"road.arterial","elementType":"geometry","stylers":[{"color":"#e4d7c6"}]},{"featureType":"road.local","elementType":"geometry","stylers":[{"color":"#fbfaf7"}]},{"featureType":"water","elementType":"all","stylers":[{"visibility":"on"},{"color":"#acbcc9"}]}]
+	        styles: [{"featureType":"administrative","elementType":"all","stylers":[{"visibility":"on"},{"lightness":33}]},{"featureType":"landscape","elementType":"all","stylers":[{"color":"#f2e5d4"}]},{"featureType":"poi.park","elementType":"geometry","stylers":[{"color":"#c5dac6"}]},{"featureType":"poi.park","elementType":"labels","stylers":[{"visibility":"on"},{"lightness":20}]},{"featureType":"road","elementType":"all","stylers":[{"lightness":20}]},{"featureType":"road.highway","elementType":"geometry","stylers":[{"color":"#c5c6c6"}]},{"featureType":"road.arterial","elementType":"geometry","stylers":[{"color":"#e4d7c6"}]},{"featureType":"road.local","elementType":"geometry","stylers":[{"color":"#fbfaf7"}]},{"featureType":"water","elementType":"all","stylers":[{"visibility":"on"},{"color":"#acbcc9"}]}]
 
-			styles: [{"elementType":"geometry","stylers":[{"hue":"#ff4400"},{"saturation":-68},{"lightness":-4},{"gamma":0.72}]},{"featureType":"road","elementType":"labels.icon"},{"featureType":"landscape.man_made","elementType":"geometry","stylers":[{"hue":"#0077ff"},{"gamma":3.1}]},{"featureType":"water","stylers":[{"hue":"#00ccff"},{"gamma":0.44},{"saturation":-33}]},{"featureType":"poi.park","stylers":[{"hue":"#44ff00"},{"saturation":-23}]},{"featureType":"water","elementType":"labels.text.fill","stylers":[{"hue":"#007fff"},{"gamma":0.77},{"saturation":65},{"lightness":99}]},{"featureType":"water","elementType":"labels.text.stroke","stylers":[{"gamma":0.11},{"weight":5.6},{"saturation":99},{"hue":"#0091ff"},{"lightness":-86}]},{"featureType":"transit.line","elementType":"geometry","stylers":[{"lightness":-48},{"hue":"#ff5e00"},{"gamma":1.2},{"saturation":-23}]},{"featureType":"transit","elementType":"labels.text.stroke","stylers":[{"saturation":-64},{"hue":"#ff9100"},{"lightness":16},{"gamma":0.47},{"weight":2.7}]}]
+			// styles: [{"elementType":"geometry","stylers":[{"hue":"#ff4400"},{"saturation":-68},{"lightness":-4},{"gamma":0.72}]},{"featureType":"road","elementType":"labels.icon"},{"featureType":"landscape.man_made","elementType":"geometry","stylers":[{"hue":"#0077ff"},{"gamma":3.1}]},{"featureType":"water","stylers":[{"hue":"#00ccff"},{"gamma":0.44},{"saturation":-33}]},{"featureType":"poi.park","stylers":[{"hue":"#44ff00"},{"saturation":-23}]},{"featureType":"water","elementType":"labels.text.fill","stylers":[{"hue":"#007fff"},{"gamma":0.77},{"saturation":65},{"lightness":99}]},{"featureType":"water","elementType":"labels.text.stroke","stylers":[{"gamma":0.11},{"weight":5.6},{"saturation":99},{"hue":"#0091ff"},{"lightness":-86}]},{"featureType":"transit.line","elementType":"geometry","stylers":[{"lightness":-48},{"hue":"#ff5e00"},{"gamma":1.2},{"saturation":-23}]},{"featureType":"transit","elementType":"labels.text.stroke","stylers":[{"saturation":-64},{"hue":"#ff9100"},{"lightness":16},{"gamma":0.47},{"weight":2.7}]}]
 
 
   		});
@@ -200,40 +220,95 @@
 
   		// event - draw polygon
   		google.maps.event.addListener(drawingManager, 'polygoncomplete', function(polygon) {
-  			console.log("polygoncomplete")
+  			clearMap();
+
+  			var jsonString = "";
   			var verticies = polygon.getPath();
   			for (var n = 0; n < verticies.getLength(); n++) {
   				xy = verticies.getAt(n);
   				console.log(xy.lat() + ", " + xy.lng());
+  				jsonString += ",{\"lat\":" + "\"" + xy.lat().toString() + "\", \"lng\":" + "\"" + xy.lng().toString() + "\"}"
   			}
-  			console.log("----------")
-  			drawingManager.setDrawingMode(null)
+
+  			jsonString = "{\"polygon\":[" + jsonString.slice(1) + "]}";
+			console.log(jsonString);
+  			
+  			_myShape = polygon;
+  			drawingManager.setDrawingMode(null);
+  			calculate_demographics("polygon", jsonString);
   		})
 
   		// event - draw circle
   		google.maps.event.addListener(drawingManager, 'circlecomplete', function(circle) {
-  			console.log("circlecomplete");
-  			console.log(circle.getCenter().lat() + ", " + circle.getCenter().lng());
-  			console.log(circle.getRadius() + " metres");
-  			console.log("----------")
+  			clearMap();
+
+  			// console.log("circlecomplete");
+  			// console.log(circle.getCenter().lat() + ", " + circle.getCenter().lng());
+  			// console.log(circle.getRadius() + " metres");
+  			_myShape = circle;
   			drawingManager.setDrawingMode(null)
+  			calculate_demographics("circle");
   		})
 
   		// event - draw rectangle
   		google.maps.event.addListener(drawingManager, 'rectanglecomplete', function(rectangle) {
-  			console.log("rectanglecomplete")
-  			console.log("NE: " + rectangle.getBounds().getNorthEast().lat() + ", " + rectangle.getBounds().getNorthEast().lng());
-			console.log("SW: " + rectangle.getBounds().getSouthWest().lat() + ", " + rectangle.getBounds().getSouthWest().lng());
-			console.log("----------")
+  			clearMap();
+
+  			var jsonString = ""
+  			jsonString = ""
+
+  			var NElat = rectangle.getBounds().getNorthEast().lat()
+  			var NElng = rectangle.getBounds().getNorthEast().lng()
+
+  			var SWlat = rectangle.getBounds().getSouthWest().lat()
+  			var SWlng = rectangle.getBounds().getSouthWest().lng()
+
+  			var NWlat = NElat
+  			var NWlng = SWlng
+
+  			var SElng = NElng
+  			var SElat = NWlat
+
+  			console.log(NElat, NElng)
+  			console.log(NWlat, NWlng)
+  			console.log(SWlat, SWlng)
+  			console.log(SElat, SElng)
+
+
+//////
+  	// 		  				jsonString += ",{\"lat\":" + "\"" + xy.lat().toString() + "\", \"lng\":" + "\"" + xy.lng().toString() + "\"}"
+  	// 		}
+
+  	// 		jsonString = "{\"polygon\":[" + jsonString.slice(1) + "]}";
+			// console.log(jsonString);
+
+
+  	// 		console.log("NE: " + rectangle.getBounds().getNorthEast().lat() + ", " + rectangle.getBounds().getNorthEast().lng());
+			// console.log("SW: " + rectangle.getBounds().getSouthWest().lat() + ", " + rectangle.getBounds().getSouthWest().lng());
+
+
+
+			_myShape = rectangle;
 			drawingManager.setDrawingMode(null)
+			calculate_demographics("rectangle");
   		})
 
-  		// event - draw overlay complete
-		google.maps.event.addListener(drawingManager, 'ovelaycomplete', function(event) {
-			console.log(event.type);
-			console.log("overlaycomplete");
-		});
+  		// events- overlay complete & drawing mode changed
+		google.maps.event.addListener(drawingManager, 'overlaycomplete', onOverlayComplete);
+		google.maps.event.addListener(drawingManager, 'drawingmode_changed', onDrawingModeChanged);
+
 	};
+
+	//////////////////////////////	
+	// DrawingMode event functions
+	//////////////////////////////
+	function onDrawingModeChanged() {
+		console.log("drawingModeChanged");
+	}	
+
+	function onOverlayComplete(event) {
+		console.log(event.type + " created...");
+	}
 
 	function initSearchBoxControl() {
 
@@ -247,7 +322,7 @@
 			searchBox.setBounds(map.getBounds());
 		});
 
-		var markers = [];
+
 		// [START region_getplaces]
 		// Listen for the event fired when the user selects a prediction and retrieve
 		// more details for that place.
@@ -259,11 +334,13 @@
 			}
 
 			// Clear out the old markers.
-			markers.forEach(function(marker) { 
-			  marker.setMap(null);
-			});
-			markers = [];
+			// _myMarkers.forEach(function(marker) { 
+			//   marker.setMap(null);
+			// });
+			// _myMarkers = [];
 
+			clearMap();
+			
 			// For each place, get the icon, name and location.
 			var bounds = new google.maps.LatLngBounds();
 			places.forEach(function(place) {
@@ -276,7 +353,7 @@
 				};
 
 				// Create a marker for each place.
-				markers.push(new google.maps.Marker({
+				_myMarkers.push(new google.maps.Marker({
 					map: map,
 					icon: icon,
 					title: place.name,
@@ -343,14 +420,14 @@
 		// Set up the click event listener for 'Set Center': Set the center of the
 		// control to the current center of the map.
 		clearMapUI.addEventListener('click', function() {
-			if (infowindow) {
-				infowindow.close();
-			}
+			clearMap();
 		});
 		//////////////////////////////
 
 	};
 	//////////////////////////////
+
+
 
 
 	//////////////////////////////	
@@ -391,6 +468,18 @@
 
 
 	function clearMap(controlDiv, map) {
+		console.log("clearMap...")
+		if (infowindow) {
+			infowindow.close();
+		}
+		if (_myShape) _myShape.setMap(null);+
+
+		_myMarkers.forEach(function(marker) {
+			marker.setMap(null);
+		});
+		_myMarkers = [];
+
+
 
 	}
 
