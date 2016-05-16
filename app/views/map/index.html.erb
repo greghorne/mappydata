@@ -139,8 +139,8 @@
 
 	var map;
 	var drawingmanager;
-	var infowindow;
 
+	var _myInfoWindow;
 	var _myShape;
 	var _myMarkers = [];
 
@@ -221,7 +221,7 @@
 
   		// event - draw polygon
   		google.maps.event.addListener(drawingManager, 'polygoncomplete', function(polygon) {
-  			clearMap();
+  			clearMap(true, true, false);
 
   			var jsonString = "";
   			var verticies = polygon.getPath();
@@ -241,7 +241,7 @@
 
   		// event - draw circle
   		google.maps.event.addListener(drawingManager, 'circlecomplete', function(circle) {
-  			clearMap();
+  			clearMap(true, true, false);
 
   			// console.log("circlecomplete");
   			// console.log(circle.getCenter().lat() + ", " + circle.getCenter().lng());
@@ -253,7 +253,7 @@
 
   		// event - draw rectangle
   		google.maps.event.addListener(drawingManager, 'rectanglecomplete', function(rectangle) {
-  			clearMap();
+  			clearMap(true, true, false);
 
   			var jsonString = ""
   			jsonString = ""
@@ -340,7 +340,7 @@
 			// });
 			// _myMarkers = [];
 
-			clearMap();
+			clearMap(true, true, true);
 
 			// For each place, get the icon, name and location.
 			var bounds = new google.maps.LatLngBounds();
@@ -421,7 +421,7 @@
 		// Set up the click event listener for 'Set Center': Set the center of the
 		// control to the current center of the map.
 		clearMapUI.addEventListener('click', function() {
-			clearMap();
+			clearMap(true, true, true);
 		});
 		//////////////////////////////
 
@@ -436,7 +436,7 @@
 	//////////////////////////////
 	function success(location) {
 
-		clearMap();
+		clearMap(true, true, true);
 
 		latitude = location.coords.latitude;
 		longitude = location.coords.longitude;
@@ -454,15 +454,15 @@
 			animation: google.maps.Animation.DROP
 		}));
 
-		infowindow = new google.maps.InfoWindow({
+		_myInfoWindow = new google.maps.InfoWindow({
 			map: map,
 			position: position,
 			content: '<center>Your approximate location<br>(More or less ' + numeral(location.coords.accuracy.toString()).format('0,0') + '  metres)</center>',
 			pixelOffset: new google.maps.Size(0, -30)
 		});
-		infowindow.open(map)
+		_myInfoWindow.open(map)
 
-		setTimeout(function() { infowindow.close(); }, 10000 );
+		//setTimeout(function() { infowindow.close(); }, 10000 );
 	};
 	//////////////////////////////
 
@@ -476,17 +476,22 @@
 	//////////////////////////////
 
 
-	function clearMap(controlDiv, map) {
+	function clearMap(bInfoWindow, bShapes, bMarkers) {
 		console.log("clearMap...")
-		if (infowindow) {
-			infowindow.close();
+		if (bInfoWindow & _myInfoWindow != null) {
+			_myInfoWindow.close();
 		}
-		if (_myShape) _myShape.setMap(null);+
 
-		_myMarkers.forEach(function(marker) {
-			marker.setMap(null);
-		});
-		_myMarkers = [];
+		if (bShapes & _myShape != null) _myShape.setMap(null);
+		console.log(bShapes + " " + _myShape)
+
+		if (bMarkers) {
+			_myMarkers.forEach(function(marker) {
+				marker.setMap(null);
+			});
+
+			_myMarkers = [];
+		}
 
 
 
