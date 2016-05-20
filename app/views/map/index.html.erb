@@ -178,16 +178,16 @@
   				style: google.maps.MapTypeControlStyle.HORIZONTAL_BAR,
   				mapTypeIds: [
   					google.maps.MapTypeId.ROADMAP,
-  					google.maps.MapTypeId.TERRAIN,
   					google.maps.MapTypeId.SATELLITE,
-  					google.maps.MapTypeId.HYBRID
+  					google.maps.MapTypeId.HYBRID,
+  					google.maps.MapTypeId.TERRAIN
   				]
   			},
 
 	        // This is where you would paste any style found on Snazzy Maps.
-	        styles: [{"featureType":"administrative","elementType":"all","stylers":[{"visibility":"on"},{"lightness":33}]},{"featureType":"landscape","elementType":"all","stylers":[{"color":"#f2e5d4"}]},{"featureType":"poi.park","elementType":"geometry","stylers":[{"color":"#c5dac6"}]},{"featureType":"poi.park","elementType":"labels","stylers":[{"visibility":"on"},{"lightness":20}]},{"featureType":"road","elementType":"all","stylers":[{"lightness":20}]},{"featureType":"road.highway","elementType":"geometry","stylers":[{"color":"#c5c6c6"}]},{"featureType":"road.arterial","elementType":"geometry","stylers":[{"color":"#e4d7c6"}]},{"featureType":"road.local","elementType":"geometry","stylers":[{"color":"#fbfaf7"}]},{"featureType":"water","elementType":"all","stylers":[{"visibility":"on"},{"color":"#acbcc9"}]}]
+	        // styles: [{"featureType":"administrative","elementType":"all","stylers":[{"visibility":"on"},{"lightness":33}]},{"featureType":"landscape","elementType":"all","stylers":[{"color":"#f2e5d4"}]},{"featureType":"poi.park","elementType":"geometry","stylers":[{"color":"#c5dac6"}]},{"featureType":"poi.park","elementType":"labels","stylers":[{"visibility":"on"},{"lightness":20}]},{"featureType":"road","elementType":"all","stylers":[{"lightness":20}]},{"featureType":"road.highway","elementType":"geometry","stylers":[{"color":"#c5c6c6"}]},{"featureType":"road.arterial","elementType":"geometry","stylers":[{"color":"#e4d7c6"}]},{"featureType":"road.local","elementType":"geometry","stylers":[{"color":"#fbfaf7"}]},{"featureType":"water","elementType":"all","stylers":[{"visibility":"on"},{"color":"#acbcc9"}]}]
 
-			// styles: [{"elementType":"geometry","stylers":[{"hue":"#ff4400"},{"saturation":-68},{"lightness":-4},{"gamma":0.72}]},{"featureType":"road","elementType":"labels.icon"},{"featureType":"landscape.man_made","elementType":"geometry","stylers":[{"hue":"#0077ff"},{"gamma":3.1}]},{"featureType":"water","stylers":[{"hue":"#00ccff"},{"gamma":0.44},{"saturation":-33}]},{"featureType":"poi.park","stylers":[{"hue":"#44ff00"},{"saturation":-23}]},{"featureType":"water","elementType":"labels.text.fill","stylers":[{"hue":"#007fff"},{"gamma":0.77},{"saturation":65},{"lightness":99}]},{"featureType":"water","elementType":"labels.text.stroke","stylers":[{"gamma":0.11},{"weight":5.6},{"saturation":99},{"hue":"#0091ff"},{"lightness":-86}]},{"featureType":"transit.line","elementType":"geometry","stylers":[{"lightness":-48},{"hue":"#ff5e00"},{"gamma":1.2},{"saturation":-23}]},{"featureType":"transit","elementType":"labels.text.stroke","stylers":[{"saturation":-64},{"hue":"#ff9100"},{"lightness":16},{"gamma":0.47},{"weight":2.7}]}]
+			styles: [{"elementType":"geometry","stylers":[{"hue":"#ff4400"},{"saturation":-68},{"lightness":-4},{"gamma":0.72}]},{"featureType":"road","elementType":"labels.icon"},{"featureType":"landscape.man_made","elementType":"geometry","stylers":[{"hue":"#0077ff"},{"gamma":3.1}]},{"featureType":"water","stylers":[{"hue":"#00ccff"},{"gamma":0.44},{"saturation":-33}]},{"featureType":"poi.park","stylers":[{"hue":"#44ff00"},{"saturation":-23}]},{"featureType":"water","elementType":"labels.text.fill","stylers":[{"hue":"#007fff"},{"gamma":0.77},{"saturation":65},{"lightness":99}]},{"featureType":"water","elementType":"labels.text.stroke","stylers":[{"gamma":0.11},{"weight":5.6},{"saturation":99},{"hue":"#0091ff"},{"lightness":-86}]},{"featureType":"transit.line","elementType":"geometry","stylers":[{"lightness":-48},{"hue":"#ff5e00"},{"gamma":1.2},{"saturation":-23}]},{"featureType":"transit","elementType":"labels.text.stroke","stylers":[{"saturation":-64},{"hue":"#ff9100"},{"lightness":16},{"gamma":0.47},{"weight":2.7}]}]
 
 
   		});
@@ -221,84 +221,108 @@
   		});
   		drawingManager.setMap(map);
 
+  		//////////////////////////////
   		// event - draw polygon
   		google.maps.event.addListener(drawingManager, 'polygoncomplete', function(polygon) {
   			clearMap(false, true, false);
 
-  			var jsonString = "";
-  			var verticies = polygon.getPath();
-  			for (var n = 0; n < verticies.getLength(); n++) {
-  				xy = verticies.getAt(n);
-  				console.log(xy.lat() + ", " + xy.lng());
-  				jsonString += ",{\"lat\":" + "\"" + xy.lat().toString() + "\", \"lng\":" + "\"" + xy.lng().toString() + "\"}"
+  			// area in metres
+  			var area = google.maps.geometry.spherical.computeArea(polygon.getPath());
+
+  			if (area > 0) {
+
+	  			var geoJSON = "";
+	  			var verticies = polygon.getPath();
+
+	  			// extract the verticies of the polygon
+	  			for (var n = 0; n < verticies.getLength(); n++) {
+	  				xy = verticies.getAt(n);
+	  				geoJSON += ",[" + xy.lng().toString() + ", " + xy.lat().toString() + "]"
+	  			}
+
+	  			// the last verticie of the polygon must equal to the first verticie of the polygon
+	  			xy = verticies.getAt(0);
+	  			geoJSON += ",[" + xy.lng().toString() + ", " + xy.lat().toString() + "]"
+
+	  			// complete GeoJSON string of polygon verticies
+	  			geoJSON = "{\"type\":\"Polygon\",\"coordinates\":[[" + geoJSON.slice(1) + "]]}";
+				console.log(geoJSON);
+	  			
+	  			// assign polygon on map to global variable
+	  			_myShape = polygon;
+
+	  			// reset drawing manager
+	  			drawingManager.setDrawingMode(null);
+
+	  			// calcualte demographics withing polygon
+	  			calculate_demographics("polygon", geoJSON);
   			}
-
-  			jsonString = "{\"polygon\":[" + jsonString.slice(1) + "]}";
-			console.log(jsonString);
-  			
-  			_myShape = polygon;
-  			drawingManager.setDrawingMode(null);
-  			calculate_demographics("polygon", jsonString);
   		})
+  		//////////////////////////////
 
+
+  		//////////////////////////////
   		// event - draw circle
   		google.maps.event.addListener(drawingManager, 'circlecomplete', function(circle) {
   			clearMap(false, true, false);
 
-  			// console.log("circlecomplete");
   			// console.log(circle.getCenter().lat() + ", " + circle.getCenter().lng());
   			// console.log(circle.getRadius() + " metres");
+
+  			var geoJSON = ""
+  			var numSides = 720;
+  			var stepDegrees = 360 / numSides;
+
+  			for (var counter = 0; counter < numSides; counter++) {
+  				var position = google.maps.geometry.spherical.computeOffset(circle.getCenter(), circle.getRadius(), stepDegrees * counter);
+  				//verticies.push([position.lng(), position.lat()])
+  				geoJSON += ",[" + position.lng().toString() + ", " + position.lat().toString() + "]"
+  			}
+
+  			// last verticie is the same as the first one
+  			position = google.maps.geometry.spherical.computeOffset(circle.getCenter(), circle.getRadius(), stepDegrees * 0)
+  			geoJSON += ",[" + position.lng().toString() + ", " + position.lat().toString() + "]"
+  			geoJSON = "{\"type\":\"Polygon\",\"coordinates\":[[" + geoJSON.slice(1) + "]]}";
+  			console.log(geoJSON);
+
   			_myShape = circle;
   			drawingManager.setDrawingMode(null)
   			calculate_demographics("circle");
   		})
+  		//////////////////////////////
 
+
+  		//////////////////////////////
   		// event - draw rectangle
   		google.maps.event.addListener(drawingManager, 'rectanglecomplete', function(rectangle) {
   			clearMap(false, true, false);
 
-  			var jsonString = ""
-  			jsonString = ""
+  			var geoJSON = "";
 
-  			var NElat = rectangle.getBounds().getNorthEast().lat()
-  			var NElng = rectangle.getBounds().getNorthEast().lng()
+  			var NElat = rectangle.getBounds().getNorthEast().lat();
+  			var NElng = rectangle.getBounds().getNorthEast().lng();
 
-  			var SWlat = rectangle.getBounds().getSouthWest().lat()
-  			var SWlng = rectangle.getBounds().getSouthWest().lng()
+  			var SWlat = rectangle.getBounds().getSouthWest().lat();
+  			var SWlng = rectangle.getBounds().getSouthWest().lng();
 
-  			var NWlat = NElat
-  			var NWlng = SWlng
+  			var NWlat = NElat;
+  			var NWlng = SWlng;
 
-  			var SElng = NElng
-  			var SElat = NWlat
+  			var SElng = NElng;
+  			var SElat = SWlat;
 
-  			console.log(NElat, NElng)
-  			console.log(NWlat, NWlng)
-  			console.log(SWlat, SWlng)
-  			console.log(SElat, SElng)
-
-
-//////
-  	// 		  				jsonString += ",{\"lat\":" + "\"" + xy.lat().toString() + "\", \"lng\":" + "\"" + xy.lng().toString() + "\"}"
-  	// 		}
-
-  	// 		jsonString = "{\"polygon\":[" + jsonString.slice(1) + "]}";
-			// console.log(jsonString);
-
-
-  	// 		console.log("NE: " + rectangle.getBounds().getNorthEast().lat() + ", " + rectangle.getBounds().getNorthEast().lng());
-			// console.log("SW: " + rectangle.getBounds().getSouthWest().lat() + ", " + rectangle.getBounds().getSouthWest().lng());
-
-
+			geoJSON = "{\"type\":\"Polygon\",\"coordinates\":[[[" + NElng + "," + NElat + "],[" + NWlng + "," + NWlat + "],[" + SWlng + "," + SWlat + "],[" + SElng + "," + SElat + "],[" + NElng + "," + NElat + "]]]}";
+			console.log(geoJSON);
 
 			_myShape = rectangle;
 			drawingManager.setDrawingMode(null)
-			calculate_demographics("rectangle");
+			calculate_demographics("polygon");
   		})
+  		//////////////////////////////
 
   		// events- overlay complete & drawing mode changed
-		google.maps.event.addListener(drawingManager, 'overlaycomplete', onOverlayComplete);
-		google.maps.event.addListener(drawingManager, 'drawingmode_changed', onDrawingModeChanged);
+		// google.maps.event.addListener(drawingManager, 'overlaycomplete', onOverlayComplete);
+		// google.maps.event.addListener(drawingManager, 'drawingmode_changed', onDrawingModeChanged);
 
 	};
 
@@ -335,12 +359,6 @@
 			if (places.length == 0) {
 			  return;
 			}
-
-			// Clear out the old markers.
-			// _myMarkers.forEach(function(marker) { 
-			//   marker.setMap(null);
-			// });
-			// _myMarkers = [];
 
 			clearMap(true, true, true);
 
@@ -471,21 +489,20 @@
 
 	//////////////////////////////
 	// Geolocation 'error' function
-	//////////////////////////////
 	function error(error) {
 		console.log("Error: getCurrentPosition: " + error)
 	}
 	//////////////////////////////
 
-
+	//////////////////////////////
+	/// clears map of infoWindow, Shapes and/or Markers
 	function clearMap(bInfoWindow, bShapes, bMarkers) {
-		console.log("clearMap...")
+
 		if (bInfoWindow & _myInfoWindow != null) {
 			_myInfoWindow.close();
 		}
 
 		if (bShapes & _myShape != null) _myShape.setMap(null);
-		console.log(bShapes + " " + _myShape)
 
 		if (bMarkers) {
 			_myMarkers.forEach(function(marker) {
@@ -494,14 +511,12 @@
 
 			_myMarkers = [];
 		}
-
-
-
 	}
+	//////////////////////////////
 
 	</script>
         
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAiI4PW3tjubRo0375oqXCV_ma9r68LvHs&callback=initMap&libraries=drawing,places" async defer>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAiI4PW3tjubRo0375oqXCV_ma9r68LvHs&callback=initMap&libraries=drawing,places,geometry" async defer>
     </script>
 
  <!--   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAiI4PW3tjubRo0375oqXCV_ma9r68LvHs&callback=initMap&libraries=drawing"
