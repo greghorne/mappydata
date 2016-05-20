@@ -134,13 +134,13 @@
 	/////////////////////////////////////////
 
 	// default location and zooms
-	var latitude = 35.746512259918504;
-	var longitude = -96.9873046875;
-	var zoom = 4;
-	var zoomGeoLocation = 17;
+	var _myLatitude = 35.746512259918504;
+	var _myLongitude = -96.9873046875;
+	var _myZoom = 4;
+	var _myZoomGeoLocation = 17;
 
-	var map;
-	var drawingmanager;
+	var _myMap;
+	var _myDrawingManager;
 
 	var _myInfoWindow;
 	var _myShape;
@@ -166,10 +166,10 @@
 	function initMap() {
 
   		// Create a map object and specify the DOM element for display.
-  		map = new google.maps.Map(document.getElementById('map'), {
-    		center: {lat: latitude, lng: longitude},
+  		_myMap = new google.maps.Map(document.getElementById('map'), {
+    		center: {lat: _myLatitude, lng: _myLongitude},
     		scrollwheel: true,
-    		zoom: zoom,
+    		zoom: _myZoom,
     		scaleControl: true,
     		streetViewControl: false,
 
@@ -200,17 +200,16 @@
 		
 		customControlsDiv.index = 1;
 		customControlsDiv.style['padding-top'] = '10px';
-		map.controls[google.maps.ControlPosition.TOP_RIGHT].push(customControlsDiv);
+		_myMap.controls[google.maps.ControlPosition.TOP_RIGHT].push(customControlsDiv);
 		
   	};
 
   	function initDrawingManager() {
   		// drawing manager set up (drawing tools)
-  		drawingManager = new google.maps.drawing.DrawingManager({
+  		_myDrawingManager = new google.maps.drawing.DrawingManager({
   			drawingMode: google.maps.drawing.OverlayType.DEFAULT,
   			drawingControl: true,
   			drawingControlOptions: {
-
   			 	position: google.maps.ControlPosition.LEFT_TOP,
   				drawingModes: [
   					google.maps.drawing.OverlayType.POLYGON,
@@ -219,11 +218,11 @@
   				]
   			}
   		});
-  		drawingManager.setMap(map);
+  		_myDrawingManager.setMap(_myMap);
 
   		//////////////////////////////
   		// event - draw polygon
-  		google.maps.event.addListener(drawingManager, 'polygoncomplete', function(polygon) {
+  		google.maps.event.addListener(_myDrawingManager, 'polygoncomplete', function(polygon) {
   			clearMap(false, true, false);
 
   			// area in metres
@@ -246,13 +245,12 @@
 
 	  			// complete GeoJSON string of polygon verticies
 	  			geoJSON = "{\"type\":\"Polygon\",\"coordinates\":[[" + geoJSON.slice(1) + "]]}";
-				console.log(geoJSON);
 	  			
 	  			// assign polygon on map to global variable
 	  			_myShape = polygon;
 
 	  			// reset drawing manager
-	  			drawingManager.setDrawingMode(null);
+	  			_myDrawingManager.setDrawingMode(null);
 
 	  			// calcualte demographics withing polygon
 	  			calculate_demographics("polygon", geoJSON);
@@ -263,7 +261,7 @@
 
   		//////////////////////////////
   		// event - draw circle
-  		google.maps.event.addListener(drawingManager, 'circlecomplete', function(circle) {
+  		google.maps.event.addListener(_myDrawingManager, 'circlecomplete', function(circle) {
   			clearMap(false, true, false);
 
   			// console.log(circle.getCenter().lat() + ", " + circle.getCenter().lng());
@@ -283,18 +281,17 @@
   			position = google.maps.geometry.spherical.computeOffset(circle.getCenter(), circle.getRadius(), stepDegrees * 0)
   			geoJSON += ",[" + position.lng().toString() + ", " + position.lat().toString() + "]"
   			geoJSON = "{\"type\":\"Polygon\",\"coordinates\":[[" + geoJSON.slice(1) + "]]}";
-  			console.log(geoJSON);
 
   			_myShape = circle;
-  			drawingManager.setDrawingMode(null)
-  			calculate_demographics("circle");
+  			_myDrawingManager.setDrawingMode(null)
+  			calculate_demographics("polygon");
   		})
   		//////////////////////////////
 
 
   		//////////////////////////////
   		// event - draw rectangle
-  		google.maps.event.addListener(drawingManager, 'rectanglecomplete', function(rectangle) {
+  		google.maps.event.addListener(_myDrawingManager, 'rectanglecomplete', function(rectangle) {
   			clearMap(false, true, false);
 
   			var geoJSON = "";
@@ -312,10 +309,9 @@
   			var SElat = SWlat;
 
 			geoJSON = "{\"type\":\"Polygon\",\"coordinates\":[[[" + NElng + "," + NElat + "],[" + NWlng + "," + NWlat + "],[" + SWlng + "," + SWlat + "],[" + SElng + "," + SElat + "],[" + NElng + "," + NElat + "]]]}";
-			console.log(geoJSON);
 
 			_myShape = rectangle;
-			drawingManager.setDrawingMode(null)
+			_myDrawingManager.setDrawingMode(null)
 			calculate_demographics("polygon");
   		})
   		//////////////////////////////
@@ -343,10 +339,10 @@
 		// Search Box
 		var input = document.getElementById('pac-input');
 		var searchBox = new google.maps.places.SearchBox(input);
-		map.controls[google.maps.ControlPosition.TOP_CENTER].push(input);
+		_myMap.controls[google.maps.ControlPosition.TOP_CENTER].push(input);
 
-		map.addListener('bounds_changed', function() {
-			searchBox.setBounds(map.getBounds());
+		_myMap.addListener('bounds_changed', function() {
+			searchBox.setBounds(_myMap.getBounds());
 		});
 
 
@@ -388,7 +384,7 @@
 					bounds.extend(place.geometry.location);
 				}
 			});
-			map.fitBounds(bounds);		
+			_myMap.fitBounds(bounds);		
 		});
 		
 	};
@@ -458,29 +454,27 @@
 
 		clearMap(true, true, true);
 
-		latitude = location.coords.latitude;
-		longitude = location.coords.longitude;
-
 		var position = {
-			lat: latitude,
-			lng: longitude
+			lat: location.coords.latitude,
+			lng: location.coords.longitude
 		};
-		map.setCenter(position)
-		map.setZoom(zoomGeoLocation)
+
+		_myMap.setCenter(position)
+		_myMap.setZoom(_myZoomGeoLocation)
 
 		_myMarkers.push(new google.maps.Marker({
 			position: position,
-			map: map,
+			map: _myMap,
 			animation: google.maps.Animation.DROP
 		}));
 
 		_myInfoWindow = new google.maps.InfoWindow({
-			map: map,
+			map: _myMap,
 			position: position,
 			content: '<center>Your approximate location<br>(More or less ' + numeral(location.coords.accuracy.toString()).format('0,0') + '  metres)</center>',
 			pixelOffset: new google.maps.Size(0, -30)
 		});
-		_myInfoWindow.open(map)
+		_myInfoWindow.open(_myMap);
 
 		//setTimeout(function() { infowindow.close(); }, 10000 );
 	};
