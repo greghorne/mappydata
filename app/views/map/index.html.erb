@@ -164,7 +164,7 @@
 			population = data["pop"]
 			household = data["hu"]
 			console.log(population + " , " + household)
-		 	alertify.success("<center>Population: " + population + " </br> Households: " + household + "</center>")
+		 	alertify.success("<center>Demographics</br></br>Population: " + population + " </br> Households: " + household + "</center>")
 		});
 		console.log("out...")
 	}
@@ -229,7 +229,11 @@
   		//////////////////////////////
   		// event - draw polygon
   		google.maps.event.addListener(_myDrawingManager, 'polygoncomplete', function(polygon) {
+  			// deletes any previously drawn shapes on the map
   			clearMap(false, true, false);
+
+  			// assign polygon on map to global variable
+  			_myShape = polygon;
 
   			// area in metres
   			var area = google.maps.geometry.spherical.computeArea(polygon.getPath());
@@ -252,15 +256,16 @@
 	  			// complete GeoJSON string of polygon verticies
 	  			geoJSON = "{\"type\":\"Polygon\",\"coordinates\":[[" + geoJSON.slice(1) + "]]}";
 	  			
-	  			// assign polygon on map to global variable
-	  			_myShape = polygon;
-
 	  			// reset drawing manager
 	  			_myDrawingManager.setDrawingMode(null);
 
 	  			// calcualte demographics withing polygon
 	  			calculate_demographics("polygon", geoJSON);
-  			} 
+  			} else {
+  				// shape just drawn on the map is invalid so delete it
+  				clearMap(false, true, false);
+  				alertify.error("Error: Shape has no area.  Please try again.")
+  			}
   		})
   		//////////////////////////////
 
