@@ -5,24 +5,24 @@ var Map = window.map || {};
 Map.init = function () {
 
 	// default location and zoom
-	var latitude = 35.746512259918504
-	var longitude = -96.9873046875
-	var zoom = 4
+	// var latitude = 35.746512259918504
+	// var longitude = -96.9873046875
+	// var zoom = 4
 
 	// set map location and zoom
-	var map = L.map('Map').setView([latitude, longitude], zoom);
+	// var map = L.map('Map').setView([latitude, longitude], zoom);
 
 	////////////////////////////////////////////
 	//osm map layer attribution
-	var attributionOSM = '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> //contributors';
+	// var attributionOSM = '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> //contributors';
 	////////////////////////////////////////////
 
 	////////////////////////////////////////////
 	//init osm map layer and add to map
-	var osm = Map.L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
-	   attribution: attributionOSM,
-	   subdomains: ['a', 'b', 'c']
-	}).addTo(map)
+	// var osm = Map.L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
+	//    attribution: attributionOSM,
+	//    subdomains: ['a', 'b', 'c']
+	// }).addTo(map)
 	////////////////////////////////////////////
 
 	// var osmMap = Maps.createOSM;
@@ -50,3 +50,4 @@ Map.init = function () {
 
 
 };
+

@@ -3,198 +3,210 @@ require 'pg'
 require 'rgeo/geo_json'
 require 'json'
 
-
 class MapController < ApplicationController
 
-  def calculate_demographics
-
-    message = params[:message]
-    puts "here.............."
-
-    render :json => {
-      pop: 10,
-      hu: 11
-    }
-
-  end
-
-
-
-
-  def show_map
-
-  end
-
-  def create_drive_polygon
-
-    longitude = params[:longitude]
-    latitude = params[:latitude]
-    time = params[:time]
-
-    getString = 'https://route.st.nlp.nokia.com/routing/6.2/calculateisoline.json'
-    getString = getString + '?mode=fastest;car;traffic:disabled&start=' + latitude + ',' + longitude + '&time=' + time + '&app_id=hQG4ZX6W0D2sUfQJeb0t&app_code=R82WCNW4u11a93myPTaMpg'
-
-    response = RestClient.get getString
-
-    result = JSON.parse(response)
+  def get_conn
+    host      = ENV['MAPPY_DATA_DB_HOST']
+    dbname    = ENV['MAPPY_DATA_DB']
+    # port      = ENV['MAPPY_DATA_DB_PORT']
+    port = 2346
+    user      = ENV['MAPPY_DATA_DB_USER']
+    password  = ENV['MAPPY_DATA_DB_PASSWORD']
     
-    render :json => {
-      result: result
-    }
-
-  end
-
-
-  def insert_iso_shape
     conn = PGconn.open(
-      :host => 'aws-gis.cot74qrzzmqu.us-west-2.rds.amazonaws.com',
-      :dbname => 'awsgis',
-      :port => 5432,
-      :user => 'master',
-      :password => 'mastermaster')
-puts "after conn"
-    ########################################################
-    # having to strip some characters from GeoJSON string prior
-    # to insert into DB
-    #
-    polygon = params[:polygon].to_json()
+      :host => host,
+      :dbname => dbname,
+      :port => port,
+      :user => user,
+      :password => password
+    )
+    return conn
+  end
 
-    polygon = polygon.gsub("\\", "")
-    polygon.chop!
-    polygon[0] = ''
 
-# puts polygon
+  def check_region
 
-    insertString = 'insert into user_polygons (name, geom) VALUES ($1, ST_SetSRID(ST_GeomFromGeoJSON($2), 4269)) RETURNING id'
-    result = conn.query(insertString, [' ', polygon])
+    lat = params[:lat].to_f
+    lng = params[:lng].to_f
 
-    row = result.first
-    rowID = row['id']
+    conn = get_conn
 
-    selectString = 'select geoid10 as block_group_id, (st_area(st_intersection(user_polygons.geom, bg_2010.geom))/st_area(bg_2010.geom)) as user_polygon_percent_overlap from bg_2010, user_polygons where user_polygons.id = $1 and ST_INTERSECTS(user_polygons.geom, bg_2010.geom) order by geoid10;'
-    result = conn.query(selectString, [rowID])
-    puts "==============="
-    puts result.count.to_s + " Block Groups "
+    # insert x,y into table
+    insert = "insert into user_point (name, geom) VALUES ('', ST_GeomFromText('Point(" + lng.to_s + " " + lat.to_s + ")', 4269)) RETURNING id"
+    result = conn.query(insert)
 
-    if (result.count == 0)
+    # determine if x,y intersects the states layer
+    select = "SELECT tl_2016_us_state.gid FROM tl_2016_us_state, user_point WHERE user_point.id = $1 AND ST_Intersects(user_point.geom, tl_2016_us_state.geom);"
+    result = conn.query(select, [result[0]['id']])
+
+    if (result.count > 0) 
+      render :json => { result: true } 
+    else 
+      render :json => { result: false } 
+    end
+
+  end
+
+
+  #
+  # usa map is broken up into 4 regions, determine which region to use
+  #
+  def getRegion(lat, lng)
+    if (lng <= -100 and lat <= 36)      
+      return "southwest"
+    elsif (lng <= -100 and lat >= 36)
+      return "northwest"
+    elsif (lng >= -100 and lat >= 36)
+      return "northeast"
+    elsif (lng >= -100 and lat <= 36)
+      return "southeast"
+    else
+      return false
+    end
+  end
+
+
+  def do_r360_iso(latitude_y, longitude_x, time, region, insert_table)
+
+    r360_key = ENV['MAPPY_DATA_R360_KEY']
+
+    r360_url_string = "https://service.route360.net/na_" +
+                  region.to_s + "/v1/polygon?cfg={'sources':[{'lat':" + 
+                  latitude_y.to_s + ",'lng':" + longitude_x.to_s + 
+                  ",'id':'Mappy','tm':{'car':{}}}],'polygon':" +
+                  "{'serializer':'geojson','srid':'4326'," +
+                  "'values':[" + time.to_s + "]}}&key=" + r360_key.to_s
+    
+    # r360 rest call
+    response_r360 = RestClient.get r360_url_string
+
+    # polygon geometry and area (sq metres)
+    geometry  = JSON.parse(response_r360)['data']['features'][0]['geometry']
+    area      = JSON.parse(response_r360)['data']['features'][0]['properties']['area']
+
+    puts "R360 Geom = " + geometry["type"].to_s
+
+    # stringify JSON object then a couple of minor mainpulations for preparing to use in a db insert statement
+    isochrone_r360 = geometry.to_s.gsub('"', '\'').gsub('=>', ':')
+
+    # insert query string
+    db_insert = "insert into user_multi_polygon (geom) VALUES (ST_SetSRID(ST_GeomFromGeoJSON($1), 4269)) RETURNING id"
+
+    conn = get_conn
+
+    result_db_insert = conn.query(db_insert, [isochrone_r360])
+    puts "iso_r360 inserted..."
+
+    conn.close
+
+    # inserted row number
+    row   = result_db_insert.first['id']
+
+    return_hash = { :success          => true,
+                    :table_row_number => row,
+                    :geometry         => geometry,
+                    :area             => area
+                  }
+
+    return JSON.generate(return_hash)
+  end
+
+
+  def do_buffer(buffer, row, table_name_source, insert_table)
+    
+    # create buffer on geom
+    db_buffer = 'Select ST_Buffer(geom, $1) from ' + table_name_source.to_s + ' where id = $2'
+
+    conn = get_conn
+    result_db_buffer = conn.query(db_buffer, [buffer, row])
+
+    # retrieve buffered geometry
+    geometry = result_db_buffer[0]['st_buffer']
+
+    db_insert = 'insert into ' + insert_table.to_s + ' (geom) Values($1) RETURNING id'
+
+    result_db_insert = conn.query(db_insert,[geometry])
+    puts "iso_buffer inserted..."
+
+    conn.close
+
+    # inserted row number
+    row   = result_db_insert.first['id']
+
+    return_hash = { :success          => true,
+                    :table_row_number => row
+                  }
+    
+    return JSON.generate(return_hash)
+
+  end
+
+
+  def create_isochrone
+
+    latitude_y = params[:latitude].to_f
+    longitude_x = params[:longitude].to_f
+    time = params[:time].to_i     # in seconds
+
+    # determine region of usa using x,y
+    region = getRegion(latitude_y, longitude_x)
+
+    if (region)
+
+      # create isochrone using r360
+      result_r360 = do_r360_iso(latitude_y, longitude_x, time, region, "user_multi_polygon")
+      parsed = JSON.parse(result_r360.to_s)
+
+      if parsed["success"] 
+
+        geometry  = parsed["geometry"]["coordinates"]
+        area      = parsed["area"]
+        row       = parsed["table_row_number"]
+
+        result_buffer = do_buffer(0.0009, row, "user_multi_polygon", "user_polygon")
+
+        parsed = JSON.parse(result_buffer.to_s)
+
+        if parsed["success"]
+
+          # spatial select to calculate demographics
+          row         = parsed["table_row_number"]
+          table_name  = "user_polygon"
+
+          db_query = 'select sum(housing10) housing10,' + 
+                       'sum(st_area(st_intersection(' + table_name.to_s + '.geom, tabblock_2010_pophu.geom))/st_area(tabblock_2010_pophu.geom) * housing10) as housing_calc, ' +
+                       'sum(pop10) as pop10,' +
+                       'sum(st_area(st_intersection(' + table_name.to_s + '.geom, tabblock_2010_pophu.geom))/st_area(tabblock_2010_pophu.geom) * pop10) as pop_calc ' + 
+                       'from tabblock_2010_pophu, ' + table_name.to_s + ' where ' + table_name.to_s + '.id = $1 and ST_INTERSECTS(' + table_name.to_s + '.geom, tabblock_2010_pophu.geom)'
+
+          conn = get_conn
+          result_db_query = conn.query(db_query, [row])
+
+          db_query_buffer = 'SELECT substring(left(St_astext(geom),-2),10) FROM user_polygon where id=$1;'
+          result_db_query_buffer = conn.query(db_query_buffer, [row])
+
+          conn.close
+
+          coordinates_string = result_db_query_buffer[0]['substring']
+          coordinates_array = coordinates_string.split(",")
+
+          render :json => {
+            success: true,
+            coordinates: geometry,
+            buffer: coordinates_array,
+            area: area,
+            housing: result_db_query[0]['housing_calc'],
+            pop:     result_db_query[0]['pop_calc']
+          }
+        end
+
+      end
+          
+    else
       render :json => {
-        pop: 0,
-        hu: 0
+        success: false,
       }
     end
-
-    block_group_id = Array.new
-    block_group_overlap = Array.new
-
-    result.each do |row|
-      block_group_id.push(row['block_group_id'])
-      block_group_overlap.push(row['user_polygon_percent_overlap'])
-    end
-
-    n = 0
-    totalPopulation = 0
-    totalHousehold = 0
-
-    counter = 0
-    threads = []
-
-    restTime = 0
-
-    start = Time.now()
-
-    while (n < block_group_id.length) do
-      # puts "Record: " + n.to_s + "   Block Group ID: " + block_group_id[n] + "   Percent Overlap: " + block_group_overlap[n]
-
-      # getString = 'http://tigerweb.geo.census.gov/arcgis/rest/services/Census2010/Tracts_Blocks/MapServer/1/'
-      # getString = getString + 'query?where=GEOID%3D' + block_group_id[n] + '&text=&objectIds=&time=&geometry=&geometryType=esriGeometryPoint&inSR=&spatialRel=esriSpatialRelIntersects&relationParam=&outFields=POP100%2C+HU100%2C+BLKGRP&returnGeometry=false&maxAllowableOffset=&geometryPrecision=&outSR=&returnIdsOnly=false&returnCountOnly=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&returnZ=false&returnM=false&gdbVersion=&returnDistinctValues=false&f=pjson'
-
-      getString = 'http://tigerweb.geo.census.gov/arcgis/rest/services/Census2010/Tracts_Blocks/MapServer/1/'
-      getString = getString + 'query?where=GEOID%3D' + block_group_id[n] + '&outFields=POP100%2C+HU100%2C+BLKGRP&returnGeometry=false'
-      getString = getString + '&returnIdsOnly=false&returnCountOnly=false&returnZ=false&returnM=false&returnDistinctValues=false&f=pjson'
-      # getString = getString + '?key=3ff5f0b1013cb070e057988b83453644ca198c34'
-      # puts getString + " " + counter.to_s
-      # puts ""
-
-      threads[counter] = Thread.new {
-        Thread.current["response"] = RestClient.get getString 
-      }
-
-      # 
-      # The following sleep value determines the sleep time between each
-      # threaded call to the Census Bureau's server.
-      #
-      sleep (0.2)
-
-      counter = counter + 1
-      n = n + 1
-    end
-
-    puts "Count: " + threads.length.to_s
-    n = 0
-puts "threads join"
-    threads.join
-puts 'threads combining'
-    threads.each { |response| response.join }
-puts "threads combined..."
-    puts "============="
-    threads.each do |response| 
-        puts "thread " + n.to_s
-        puts response["response"]
-        hash = JSON.parse response["response"].to_s
-
-        features = hash["features"];
-        attributes = features[0];
-        puts attributes
-
-        tempPopulation = attributes["attributes"]["POP100"].to_f * block_group_overlap[n].to_f
-        tempHousehold = attributes["attributes"]["HU100"].to_f * block_group_overlap[n].to_f
-        puts ""
-        puts tempPopulation
-        puts tempHousehold
-        totalPopulation = totalPopulation + tempPopulation
-        totalHousehold = totalHousehold + tempHousehold 
-
-        n = n + 1
-    end
-
-    nowTime = Time.now
-    puts "Total Time: " + (nowTime - start).to_s
-    puts "==============="
-    puts "REST Calls: " + result.count.to_s
-    puts "Avg REST Call: " + ((nowTime - start) / result.count).to_s
-    puts "==============="
-    puts "------------"
-    puts "POP " + totalPopulation.to_f.floor.to_s
-    puts "HU " + totalHousehold.to_f.floor.to_s
-    puts "------------"
-
-    render :json => {
-      pop: totalPopulation.floor,
-      hu: totalHousehold.floor
-    }
-
   end
-
-
-  def insert_iso
-    # puts params[:polygon]
-
-    render :json => {
-      connection: 'success'
-    }   
-
-  end
-
-
-  def starting_coordinates
-
-    render :json => {
-      latitude: 36,
-      longitude: -97,
-      zoom: 100,
-      isGeoLocation: true
-    }
-  end
-
-
 end
+

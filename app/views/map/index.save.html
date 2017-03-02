@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>MappyData</title>
+	<%= stylesheet_link_tag    'application', media: 'all', 'data-turbolinks-track' => true %>
+	<%= javascript_include_tag 'application', 'data-turbolinks-track' => true %>
+	<%= csrf_meta_tags %>
+
+	<!-- number formatting js lib -->
+	<script src="//cdnjs.cloudflare.com/ajax/libs/numeral.js/1.4.5/numeral.min.js"></script>
+
+	<!-- alertify js -->
+	<!-- // <script src="//cdn.jsdelivr.net/alertifyjs/1.6.1/alertify.min.js"></script> -->
+	<!-- alertify CSS -->
+	<!-- <link rel="stylesheet" href="//cdn.jsdelivr.net/alertifyjs/1.6.1/css/alertify.min.css"/> -->
+	<!-- Default theme -->
+	<!-- <link rel="stylesheet" href="//cdn.jsdelivr.net/alertifyjs/1.6.1/css/themes/default.min.css"/> -->
+
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="https://developers.route360.net/vendors/leaflet/leaflet.css" />
+  <link rel="stylesheet" href="https://developers.route360.net/vendors/jquery-ui/jquery-ui-1.10.0.custom.css" />
+  <link rel="stylesheet" href="https://developers.route360.net/resources/css/r360.css" />
+ 	
+	
+  <!--  Include r360.js -->
+  <script src="https://developers.route360.net/vendors/r360/r360-core-src.js"></script>
+
+
+	<script src="https://maps.googleapis.com/maps/api/js?v=3.exp&sensor=false&key=AIzaSyAXdMOrKfVv95klzSFoZXmRC3QhUeQSTwo&libraries=drawing,places,geometry" type="text/javascript" >
+	</script>
+
+	<script src="https://developers.route360.net/vendors/r360/r360-google.js"></script>
+
+  <!--  Include jQuery and jQuery UI -->
+  <script src="https://developers.route360.net/vendors/jquery/jquery.min.js"></script>
+  <script src="https://developers.route360.net/vendors/jquery-ui/jquery-ui.min.js"></script>
+
+	<style type="text/css">
+	
+	 	html, body {
+			height: 100%;
+			margin: 0;
+			padding: 0;
+		}
+
+		#map { 
+			height: 100%; 
+			width: 100%;
+			margin: 0;
+			padding: 0;
+		}
+
+		#geolocateUI, #clearMapUI {
+			background-color: #fff;
+			border: 2px solid #fff;
+			border-radius: 3px;
+			box-shadow: 0 2px 6px rgba(0,0,0,.3);
+			cursor: pointer;
+			float: left;
+			margin: 5px 10px 0 0;
+			text-align: center;
+		}
+
+		#geolocateText, #clearMapText {
+			color: rgb(25,25,25);
+			font-family: Roboto,Arial,sans-serif;
+			font-size: 15px;
+			line-height: 25px;
+			padding-left: 5px;
+			padding-right: 5px;
+		}
+
+		#clearMapUI {
+			margin-left: 12px;
+		}
+
+		.controls {
+			margin-top: 10px;
+			border: 1px solid transparent;
+			border-radius: 2px 0 0 2px;
+			box-sizing: border-box;
+			-moz-box-sizing: border-box;
+			height: 32px;
+			outline: none;
+			box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+		}
+
+		#pac-input {
+			background-color: #fff;
+			font-family: Roboto;
+			font-size: 15px;
+			font-weight: 300;
+			margin-left: 0px;
+			padding: 0 11px 0 13px;
+			text-overflow: ellipsis;
+			width: 300px;
+		}
+
+		#pac-input: focus {
+			border-color: #4d90fe;
+		}
+
+		.pac-container {
+			font-family: Roboto;
+		}
+
+		#type-selector {
+			color: #fff;
+			background-color: : #4d90fe;
+			padding: 5px 11px 0px 11px;
+		}
+
+		#type-selector label {
+			font-family: Roboto;
+			font-size: 13px;
+			font-weight: 300;
+		}
+
+		#panel, #flip, #info {
+		    padding: 15px;
+		    text-align: center;
+		    background-color: rgb(45, 49, 63);
+		    border: solid 1px #c3c3c3;
+			color: #fff;
+			font-family: Roboto,Arial,sans-serif;
+			font-size: 15px;	    
+		}
+
+		#panel {
+		    padding: 15px;
+		    display: none;
+		}
+
+/*		#info{
+			padding: 5px;
+		}*/
+
+
+	</style>
+</head>
+
+<body>
+
+
+
+	
+<!-- 	<div id="flip">Click here for more information about this website.</div>
+	<div id="panel">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</div> -->
+	
+<!-- 	<input id='pac-input' class='controls' type='text' placeholder='Search Box' style='border-radius:3px; background-color:#fff; visibility: hidden'> -->
+
+	<div id="map"></div>
+	<!-- <div id='info'></div> -->
+
+	<script type="text/javascript">
+
+	// set the service API-key, this is a demo key
+  	// please contact us and request your own key
+  	r360.config.serviceKey = 'GYSWOYA0HD8JM1LAJYDX';
+  	r360.config.serviceUrl = 'https://service.route360.net/na_northwest/';
+
+
+	// $(document).ready(function(){
+	//     $("#flip").click(function(){
+	//         $("#panel").slideToggle("slow");
+	//     });
+	// });
+	/////////////////////////////////////////
+
+	// default location and zooms
+	var _myLatitude = 35.746512259918504;
+	var _myLongitude = -96.9873046875;
+	var _myZoom = 4;
+	var _myZoomGeoLocation = 17;
+	var _myDrawingManager;
+
+	var _myInfoWindow;
+	var _myShape;
+	var _myMarkers = [];
+
+	// var _myIsochrone;
+	// var map
+
+	// Notes:
+	// asyn defer
+	// sensor=false
+
+	function calculate_demographics(shape_type) {
+
+		$.ajax({
+		    url: "/calculate_demographics.json",
+		    type: "POST",
+		    data: {msg: "this is a message..._myShape"}
+		}).done(function (data) {
+			console.log("");
+			console.log("looped back...");
+			population = data["pop"]
+			household = data["hu"]
+			console.log(population + " , " + household)
+		 	alertify.success("<center>Demographics</br></br>Population: " + population + " </br> Households: " + household + "</center>")
+		});
+		console.log("out...")
+	}
+
+	$(document).ready(function() {
+
+		if (document.getElementById('map')) {
+	    // $("#flip").click(function(){
+	    //     $("#panel").slideToggle("slow");
+	    // });
+
+			console.log("Init Map...")
+
+	  		// Create a map object and specify the DOM element for display.
+	  		map = new google.maps.Map(document.getElementById('map'), {
+	    		center: {lat: _myLatitude, lng: _myLongitude},
+	    		scrollwheel: true,
+	    		zoom: _myZoom,
+	    		scaleControl: true,
+	    		streetViewControl: false,
+
+	  			mapTypeControl: true,
+	  			mapTypeControlOptions: {
+	  				style: google.maps.MapTypeControlStyle.HORIZONTAL_BAR,
+	  				mapTypeIds: [
+	  					google.maps.MapTypeId.ROADMAP,
+	  					google.maps.MapTypeId.SATELLITE,
+	  					google.maps.MapTypeId.HYBRID,
+	  					google.maps.MapTypeId.TERRAIN
+	  				]
+	  			},
+
+		        styles: [{"featureType":"administrative","elementType":"all","stylers":[{"visibility":"on"},{"lightness":33}]},{"featureType":"landscape","elementType":"all","stylers":[{"color":"#f2e5d4"}]},{"featureType":"poi.park","elementType":"geometry","stylers":[{"color":"#c5dac6"}]},{"featureType":"poi.park","elementType":"labels","stylers":[{"visibility":"on"},{"lightness":20}]},{"featureType":"road","elementType":"all","stylers":[{"lightness":20}]},{"featureType":"road.highway","elementType":"geometry","stylers":[{"color":"#c5c6c6"}]},{"featureType":"road.arterial","elementType":"geometry","stylers":[{"color":"#e4d7c6"}]},{"featureType":"road.local","elementType":"geometry","stylers":[{"color":"#fbfaf7"}]},{"featureType":"water","elementType":"all","stylers":[{"visibility":"on"},{"color":"#acbcc9"}]}]
+
+			// styles: [{"elementType":"geometry","stylers":[{"hue":"#ff4400"},{"saturation":-68},{"lightness":-4},{"gamma":0.72}]},{"featureType":"road","elementType":"labels.icon"},{"featureType":"landscape.man_made","elementType":"geometry","stylers":[{"hue":"#0077ff"},{"gamma":3.1}]},{"featureType":"water","stylers":[{"hue":"#00ccff"},{"gamma":0.44},{"saturation":-33}]},{"featureType":"poi.park","stylers":[{"hue":"#44ff00"},{"saturation":-23}]},{"featureType":"water","elementType":"labels.text.fill","stylers":[{"hue":"#007fff"},{"gamma":0.77},{"saturation":65},{"lightness":99}]},{"featureType":"water","elementType":"labels.text.stroke","stylers":[{"gamma":0.11},{"weight":5.6},{"saturation":99},{"hue":"#0091ff"},{"lightness":-86}]},{"featureType":"transit.line","elementType":"geometry","stylers":[{"lightness":-48},{"hue":"#ff5e00"},{"gamma":1.2},{"saturation":-23}]},{"featureType":"transit","elementType":"labels.text.stroke","stylers":[{"saturation":-64},{"hue":"#ff9100"},{"lightness":16},{"gamma":0.47},{"weight":2.7}]}]
+  			});
+
+
+
+  			initDrawingManager();
+  			initSearchBoxControl();
+
+  			var colorPolygonLayer = new GoogleMapsPolygonLayer(map);
+
+  			// Set up of custom button controls
+			var customControlsDiv = document.createElement('div');
+			var customControls = new initCustomControls(customControlsDiv, map);
+			customControlsDiv.index = 1;
+			customControlsDiv.style['padding-top'] = '10px';
+			map.controls[google.maps.ControlPosition.TOP_RIGHT].push(customControlsDiv);
+
+	  		google.maps.event.addListener(_myDrawingManager, 'markercomplete', function(marker) {
+					clearMap(true, true, true, true);
+					lat = marker.position.lat();
+					lng = marker.position.lng();
+
+					var position = {
+						lat: lat,
+						lng: lng
+					};
+					// map.setCenter(position)
+
+					_myMarkers.push(marker);
+
+
+					// map.setCenter(position)
+					var _myIsochrone = new GoogleMapsPolygonLayer(map);
+					doIsochrone(lat, lng, _myIsochrone);
+
+	  		});
+  	function initDrawingManager() {
+  		// drawing manager set up (drawing tools)
+  		_myDrawingManager = new google.maps.drawing.DrawingManager({
+  			drawingMode: google.maps.drawing.OverlayType.DEFAULT,
+  			drawingControl: true,
+  			drawingControlOptions: {
+  			 	position: google.maps.ControlPosition.LEFT_TOP,
+  				drawingModes: ['polygon', 'circle', 'rectangle', 'marker']
+  			}
+  		});
+  		_myDrawingManager.setMap(map);
+
+  		//////////////////////////////
+  		// event - draw polygon
+  		// google.maps.event.addListener(_myDrawingManager, 'polygoncomplete', function(polygon) {
+  		// 	// deletes any previously drawn shapes on the map
+  		// 	clearMap(false, true, false, true);
+
+  		// 	// assign polygon on map to global variable
+  		// 	_myShape = polygon;
+
+  		// 	// area in metres
+  		// 	var area = google.maps.geometry.spherical.computeArea(polygon.getPath());
+
+  		// 	if (area > 0) {
+
+	  	// 		var geoJSON = "";
+	  	// 		var verticies = polygon.getPath();
+
+	  	// 		// extract the verticies of the polygon
+	  	// 		for (var n = 0; n < verticies.getLength(); n++) {
+	  	// 			xy = verticies.getAt(n);
+	  	// 			geoJSON += ",[" + xy.lng().toString() + ", " + xy.lat().toString() + "]"
+	  	// 		}
+
+	  	// 		// the last verticie of the polygon must equal to the first verticie of the polygon
+	  	// 		xy = verticies.getAt(0);
+	  	// 		geoJSON += ",[" + xy.lng().toString() + ", " + xy.lat().toString() + "]"
+
+	  	// 		// complete GeoJSON string of polygon verticies
+	  	// 		geoJSON = "{\"type\":\"Polygon\",\"coordinates\":[[" + geoJSON.slice(1) + "]]}";
+	  			
+	  	// 		// reset drawing manager
+	  	// 		_myDrawingManager.setDrawingMode(null);
+
+	  	// 		// calcualte demographics withing polygon
+	  	// 		calculate_demographics("polygon", geoJSON);
+  		// 	} else {
+  		// 		// shape just drawn on the map is invalid so delete it
+  		// 		clearMap(false, true, false, true);
+  		// 		alertify.error("Error: Shape has no area.  Please try again.")
+  		// 	}
+  		// });
+  		//////////////////////////////
+
+
+  		//////////////////////////////
+  		// event - draw circle
+  		// google.maps.event.addListener(_myDrawingManager, 'circlecomplete', function(circle) {
+  		// 	clearMap(false, true, false, true);
+
+  		// 	// console.log(circle.getCenter().lat() + ", " + circle.getCenter().lng());
+  		// 	// console.log(circle.getRadius() + " metres");
+
+  		// 	var geoJSON = ""
+  		// 	var numSides = 720;
+  		// 	var stepDegrees = 360 / numSides;
+
+  		// 	for (var counter = 0; counter < numSides; counter++) {
+  		// 		var position = google.maps.geometry.spherical.computeOffset(circle.getCenter(), circle.getRadius(), stepDegrees * counter);
+  		// 		//verticies.push([position.lng(), position.lat()])
+  		// 		geoJSON += ",[" + position.lng().toString() + ", " + position.lat().toString() + "]"
+  		// 	}
+
+  		// 	// last verticie is the same as the first one
+  		// 	position = google.maps.geometry.spherical.computeOffset(circle.getCenter(), circle.getRadius(), stepDegrees * 0)
+  		// 	geoJSON += ",[" + position.lng().toString() + ", " + position.lat().toString() + "]"
+  		// 	geoJSON = "{\"type\":\"Polygon\",\"coordinates\":[[" + geoJSON.slice(1) + "]]}";
+
+  		// 	_myShape = circle;
+  		// 	_myDrawingManager.setDrawingMode(null)
+  		// 	calculate_demographics("polygon");
+  		// });
+  		//////////////////////////////
+
+
+  		//////////////////////////////
+  		// event - draw rectangle
+  	// 	google.maps.event.addListener(_myDrawingManager, 'rectanglecomplete', function(rectangle) {
+  	// 		clearMap(false, true, false, true);
+
+  	// 		var geoJSON = "";
+
+  	// 		var NElat = rectangle.getBounds().getNorthEast().lat();
+  	// 		var NElng = rectangle.getBounds().getNorthEast().lng();
+
+  	// 		var SWlat = rectangle.getBounds().getSouthWest().lat();
+  	// 		var SWlng = rectangle.getBounds().getSouthWest().lng();
+
+  	// 		var NWlat = NElat;
+  	// 		var NWlng = SWlng;
+
+  	// 		var SElng = NElng;
+  	// 		var SElat = SWlat;
+
+			// geoJSON = "{\"type\":\"Polygon\",\"coordinates\":[[[" + NElng + "," + NElat + "],[" + NWlng + "," + NWlat + "],[" + SWlng + "," + SWlat + "],[" + SElng + "," + SElat + "],[" + NElng + "," + NElat + "]]]}";
+
+			// _myShape = rectangle;
+			// _myDrawingManager.setDrawingMode(null)
+			// calculate_demographics("polygon");
+  	// 	});
+  		//////////////////////////////
+
+		
+
+
+
+
+
+
+  		// events- overlay complete & drawing mode changed
+		// google.maps.event.addListener(drawingManager, 'overlaycomplete', onOverlayComplete);
+		// google.maps.event.addListener(drawingManager, 'drawingmode_changed', onDrawingModeChanged);
+
+	};
+
+		    function doIsochrone(lat, lng, layer) {
+
+
+		   		console.log("doIsochrone...")
+
+
+				r360.config.serviceKey = 'GYSWOYA0HD8JM1LAJYDX';
+			  	r360.config.serviceUrl = 'https://service.route360.net/na_northeast/';	
+				
+				
+				 
+		        var travelOptions = r360.travelOptions();
+		        travelOptions.addSource({ lat : lat, lng : lng });            
+		        travelOptions.setTravelTimes([300]);
+		        travelOptions.setTravelType('car');
+		        travelOptions.setDate('20150706');
+		        travelOptions.setTime('39000');
+		        
+
+		        // call the service
+		        r360.PolygonService.getTravelTimePolygons(travelOptions, function(polygons){
+		            
+		            layer.update(polygons);
+		            // console.log(polygons)
+		            // console.log("-----------------")
+		            // console.log(polygons[0].polygons[0].lineStrings[0].getCoordinate[0])
+		            
+
+		         //    var delayTime = 2000;
+		         //    (function() {
+			        //     _myIsochrone.fitMap()
+			        // }, delayTime)
+	        }, 
+
+	        function(status, message){
+
+	            $("#r360-gettingstarted-error").show('fade').html("We are currently performing service \
+	                maintenance. The service will be available shortly.");
+	        });
+    		}
+
+	//////////////////////////////	
+	// DrawingMode event functions
+	//////////////////////////////
+	function onDrawingModeChanged() {
+		console.log("drawingModeChanged");
+	}	
+
+	function onOverlayComplete(event) {
+		console.log(event.type + " created...");
+	}
+
+	function initSearchBoxControl() {
+
+		//////////////////////////////
+		// Search Box
+		var input = document.getElementById('pac-input');
+		var searchBox = new google.maps.places.SearchBox(input);
+		map.controls[google.maps.ControlPosition.TOP_CENTER].push(input);
+
+		map.addListener('bounds_changed', function() {
+			searchBox.setBounds(map.getBounds());
+		});
+
+
+		// [START region_getplaces]
+		// Listen for the event fired when the user selects a prediction and retrieve
+		// more details for that place.
+		// searchBox.addListener('places_changed', function() {
+		// 	var places = searchBox.getPlaces();
+
+		// 	if (places.length == 0) {
+		// 	  return;
+		// 	}
+
+		// 	clearMap(true, true, true, true);
+
+		// 	// For each place, get the icon, name and location.
+		// 	var bounds = new google.maps.LatLngBounds();
+		// 	places.forEach(function(place) {
+		// 		var icon = {
+		// 			url: place.icon,
+		// 			size: new google.maps.Size(71, 71),
+		// 			origin: new google.maps.Point(0, 0),
+		// 			anchor: new google.maps.Point(17, 34),
+		// 			scaledSize: new google.maps.Size(25, 25)
+		// 		};
+
+		// 		// Create a marker for each place.
+		// 		_myMarkers.push(new google.maps.Marker({
+		// 			map: map,
+		// 			icon: icon,
+		// 			title: place.name,
+		// 			position: place.geometry.location
+		// 		}));
+
+		// 		if (place.geometry.viewport) {
+		// 			// not a geocoded location (like zipcode, state, etc)
+		// 			bounds.union(place.geometry.viewport);
+		// 		} else {
+		// 			// the search location chosen has an x, y
+		// 			bounds.extend(place.geometry.location);
+		// 		}
+		// 	});
+		// 	map.fitBounds(bounds);		
+
+		// });
+	};
+
+
+
+
+	//////////////////////////////
+	// Custom button controls set up
+	//////////////////////////////
+	function initCustomControls(controlDiv, map) {
+
+		// We set up a variable for this since we're adding event listeners later.
+		var control = this;
+
+		// Set CSS for the control border
+		var geolocateUI = document.createElement('div');
+		geolocateUI.id = 'geolocateUI';
+		geolocateUI.title = 'Click to geolocate on map';
+		controlDiv.appendChild(geolocateUI);
+
+		// Set CSS for the control interior
+		var geolocateText = document.createElement('div');
+		geolocateText.id = 'geolocateText';
+		geolocateText.innerHTML = 'Geolocate';
+		geolocateUI.appendChild(geolocateText);
+
+		// Click event for Geolocate
+		geolocateUI.addEventListener('click', function() {
+			var options = { timeout: 5000, enableHighAccuracy: true }
+			navigator.geolocation.getCurrentPosition(success, error, options)
+		});
+		//////////////////////////////
+
+
+		//////////////////////////////
+		// Clear Map
+		//////////////////////////////
+		var clearMapUI = document.createElement('div');
+		clearMapUI.id = 'clearMapUI';
+		clearMapUI.title = 'Click to clear map';
+		controlDiv.appendChild(clearMapUI);
+
+		// Set CSS for the control interior
+		var clearMapText = document.createElement('div');
+		clearMapText.id = 'clearMapText';
+		clearMapText.innerHTML = 'Clear Map';
+		clearMapUI.appendChild(clearMapText);
+
+		// Set up the click event listener for 'Set Center': Set the center of the
+		// control to the current center of the map.
+		clearMapUI.addEventListener('click', function() {
+			clearMap(true, true, true, true);
+		});
+		//////////////////////////////
+
+	};
+	//////////////////////////////
+
+
+
+
+	//////////////////////////////	
+	// Geolocation 'success' function
+	//////////////////////////////
+	function success(location) {
+
+		clearMap(true, true, true, true);
+		console.log(location.coords.latitude + ", " + location.coords.longitude);
+
+
+		var position = {
+			lat: location.coords.latitude,
+			lng: location.coords.longitude
+		};
+
+		// map.setCenter(position)
+		// map.setZoom(_myZoomGeoLocation)
+
+		_myMarkers.push(new google.maps.Marker({
+			position: position,
+			map: map
+			// animation: google.maps.Animation.DROP
+		}));
+
+		// _myInfoWindow = new google.maps.InfoWindow({
+		// 	map: map,
+		// 	position: position,
+		// 	content: '<center>Your approximate location<br>(More or less ' + numeral(location.coords.accuracy.toString()).format('0,0') + '  metres)</center>',
+		// 	pixelOffset: new google.maps.Size(0, -30)
+		// });
+		// _myInfoWindow.open(map);
+
+
+		var _myIsochrone = new GoogleMapsPolygonLayer(map);
+		doIsochrone(location.coords.latitude, location.coords.longitude, _myIsochrone);
+
+		// setTimeout(function() { infowindow.close(); }, 10000 );
+
+
+	};
+  	
+
+
+	//////////////////////////////
+	// Geolocation 'error' function
+	function error(error) {
+		console.log("Error: getCurrentPosition: " + error)
+	}
+	//////////////////////////////
+
+	//////////////////////////////
+	/// clears map of infoWindow, Shapes and/or Markers
+	function clearMap(bInfoWindow, bShapes, bMarkers, bIsochrone) {
+
+		// some weirdness here in that the following 'if' statement is pushed down
+		// in this function the isochrone will render close by but not in the correct
+		// position.  Check GMH
+		if (bMarkers) {
+			_myMarkers.forEach(function(marker) {
+				marker.setMap(null);
+			});
+
+			_myMarkers = [];
+			// alert("Stop")
+		}
+
+		if (bInfoWindow & _myInfoWindow != null) {
+			_myInfoWindow.close();
+		}
+
+		if (bShapes & _myShape != null) _myShape.setMap(null);
+
+
+
+		// if (bIsochrone & _myIsochrone != null) {
+		// 	console.log("Iso null...")
+		// 	_myIsochrone.update(0);
+		// 	// alert("Stop2")
+		// }
+	}
+}
+	  	});
+	//////////////////////////////
+	</script>
+
+
+
+
+</body>
+</html>

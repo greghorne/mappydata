@@ -5,7 +5,8 @@ Rails.application.routes.draw do
   # See how all your routes lay out with "rake routes".
 
   # You can have the root of your site routed with "root"
-  post 'calculate_demographics' => 'map#calculate_demographics'
+  post 'create_isochrone' => 'map#create_isochrone'
+  post 'check_region' => 'map#check_region'
   root 'map#index'
 
   # Example of regular route:
