@@ -8,8 +8,7 @@ class MapController < ApplicationController
   def get_conn
     host      = ENV['MAPPY_DATA_DB_HOST']
     dbname    = ENV['MAPPY_DATA_DB']
-    # port      = ENV['MAPPY_DATA_DB_PORT']
-    port = 2346
+    port      = ENV['MAPPY_DATA_DB_PORT']
     user      = ENV['MAPPY_DATA_DB_USER']
     password  = ENV['MAPPY_DATA_DB_PASSWORD']
     
@@ -38,7 +37,7 @@ class MapController < ApplicationController
     # determine if x,y intersects the states layer
     select = "SELECT tl_2016_us_state.gid FROM tl_2016_us_state, user_point WHERE user_point.id = $1 AND ST_Intersects(user_point.geom, tl_2016_us_state.geom);"
     result = conn.query(select, [result[0]['id']])
-
+puts "USA..."
     if (result.count > 0) 
       render :json => { result: true } 
     else 

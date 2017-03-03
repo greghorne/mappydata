@@ -17,11 +17,8 @@
 default: &default
   adapter:  postgresql
   encoding: unicode
-  host:     <%= ENV['MAPPY_DATA_DB_HOST'] %>
-  dbname:   <%= ENV['MAPPY_DATA_DB'] %>
-  port:     <%= ENV['MAPPY_DATA_DB_PORT'] %>
-  user:     <%= ENV['MAPPY_DATA_DB_USER'] %>
-  password: <%= ENV['MAPPY_DATA_DB_PASSWORD'] %>
+
+
   # For details on connection pooling, see rails configuration guide
   # http://guides.rubyonrails.org/configuring.html#database-pooling
   pool: 5
